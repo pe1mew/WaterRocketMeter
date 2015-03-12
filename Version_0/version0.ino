@@ -13,6 +13,9 @@
  * collected with any terminal program. When saved to a file, analysis is possible using a spreadsheet
  * or using a dedicated program.
  * The presentation of collected data will continue with a 1 second interval until a reset is performed.
+ 
+  \todo doubles to float
+  \todo sqrtf ipv sqrt
  * 
  */
 
