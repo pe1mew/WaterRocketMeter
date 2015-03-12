@@ -10,8 +10,10 @@
  * Assumed that a water rocket will fly average 6 seconds (without a parachute) this sketch will collect 
  * at 200ms interval 50 measurements. This will result in 10 second of data and 5 measurements per second.
  * The collected data is stored and after flight being transmitted in a csv-style data stream that can be 
- * collected with any terminal program. When saved to a fil analysis is possible using a spreadsheet
+ * collected with any terminal program. When saved to a file, analysis is possible using a spreadsheet
  * or using a dedicated program.
+ * The presentation of collected data will continue with a 1 second interval until a reset is performed.
+ * 
  */
 
 #include <Wire.h>                // Library for 2Wire (i2c)
@@ -207,3 +209,4 @@ void loop() {
     delay(1000);              // wait for a second to repeat sending data
   };
 }
+
