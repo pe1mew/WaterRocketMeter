@@ -2,7 +2,7 @@
  * \file version0.io
  * \date 13-3-2015
  * \author Remko Welling (PE1MEW) pe1mew@pe1mew.nl
- * \version 01
+ * \version 04
  * \license Creative Commons Attribution-ShareAlike 4.0 International https://creativecommons.org/licenses/by-sa/4.0/legalcode
  * 
  * This sketch allows a Arduino together with a accellerometer and a height sensor, on top of a 
@@ -13,10 +13,25 @@
  * collected with any terminal program. When saved to a file, analysis is possible using a spreadsheet
  * or using a dedicated program.
  * The presentation of collected data will continue with a 1 second interval until a reset is performed.
- 
-  \todo doubles to float
-  \todo sqrtf ipv sqrt
  * 
+ */
+ 
+/**
+
+ Version information:
+ ====================
+ Date       verssion  Comment
+ ----------------------------------------------------------------------------------------------------
+ 12-3-2015  03        Initial commit to Github
+ 13-3-2015  04        Changed the use of doubles to float,
+                      Change the use of sqrt() to sqrtf(), use single precision for double precision
+
+ Future features and optimizations:
+ ==================================
+ \todo Add function to store unique measurement ID to measurement output and store in eeprom.
+ \todo Add function to have exact timing interval for measurements. Use timer and interrupt.
+           Calculate velocity using acceleration and time. 
+ 
  */
 
 #include <Wire.h>                // Library for 2Wire (i2c)
@@ -40,11 +55,11 @@
 #define CALIBRATION_COUNT  10 // number of measurements over which measurements are being averaged
 
 typedef struct sensorset_t {
-double dAccX;       // X-axis accelerometer sensor in m/s
-double dAccY;       // X-axis accelerometer sensor in m/s
-double dAccZ;       // X-axis accelerometer sensor in m/s
-double dAccV;       // vector accelerometer sensor in m/s
-double dAltHeight;  // current height in meters
+float fAccX;       // X-axis accelerometer sensor in m/s
+float fAccY;       // X-axis accelerometer sensor in m/s
+float fAccZ;       // X-axis accelerometer sensor in m/s
+float fAccV;       // vector accelerometer sensor in m/s
+float fAltHeight;  // current height in meters
 } sensorset_t;
 
 Adafruit_BMP085 bmp;      // Create object for Adafruit BMP085 sensor
@@ -125,6 +140,7 @@ void loop() {
   // Calibration of preassure sensor
   for (int i = 0; i < CALIBRATION_COUNT; i++){
     i32ActualPreassure += bmp.readPressure(); // Read local pressure for reference
+    // delay(INTERVAL); // Wait to create longer averiging period
   };
   i32ActualPreassure /= CALIBRATION_COUNT; // average values.
   
@@ -135,6 +151,7 @@ void loop() {
     fAxisCal[AXIS_X] += event.acceleration.x; // Sum measured value with current value
     fAxisCal[AXIS_Y] += event.acceleration.y;
     fAxisCal[AXIS_Z] += event.acceleration.z;
+    // delay(INTERVAL); // Wait to create longer averiging period
   };
   fAxisCal[AXIS_X] /= CALIBRATION_COUNT; // average all values.
   fAxisCal[AXIS_Y] /= CALIBRATION_COUNT;
@@ -154,18 +171,18 @@ void loop() {
     
     // Accelerometer sensor
     accel.getEvent(&event); // collect data
-    aSensorSamples[i].dAccX = (double)event.acceleration.x - fAxisCal[AXIS_X]; // store data in sensor array.
-    aSensorSamples[i].dAccY = (double)event.acceleration.y - fAxisCal[AXIS_Y];
-    aSensorSamples[i].dAccZ = (double)event.acceleration.z - fAxisCal[AXIS_Z];
-    aSensorSamples[i].dAccV = (double)sqrt(pow(aSensorSamples[i].dAccX, 2) + // calculate the length of the vector 
-                                           pow(aSensorSamples[i].dAccY, 2) +
-                                           pow(aSensorSamples[i].dAccZ, 2)
-                                           );
+    aSensorSamples[i].fAccX = event.acceleration.x - fAxisCal[AXIS_X]; // store data in sensor array.
+    aSensorSamples[i].fAccY = event.acceleration.y - fAxisCal[AXIS_Y];
+    aSensorSamples[i].fAccZ = event.acceleration.z - fAxisCal[AXIS_Z];
+    aSensorSamples[i].fAccV = sqrtf(pow(aSensorSamples[i].fAccX, 2) + // calculate the length of the vector 
+                                    pow(aSensorSamples[i].fAccY, 2) +
+                                    pow(aSensorSamples[i].fAccZ, 2)
+                                   );
     // Height meter
-    aSensorSamples[i].dAltHeight =(double)bmp.readAltitude((float)i32ActualPreassure);
+    aSensorSamples[i].fAltHeight = bmp.readAltitude((float)i32ActualPreassure);
     
     // wait for trigger to running true
-    if (aSensorSamples[i].dAccV > TRIGGER_TRESHOLD){     // test if accelerometer is sensing movement
+    if (aSensorSamples[i].fAccV > TRIGGER_TRESHOLD){     // test if accelerometer is sensing movement
       bRunning = true;
     }
     
@@ -194,15 +211,15 @@ void loop() {
       Serial.print("D;");  // Line identifier that data is following
       Serial.print(i);
       Serial.print(";");
-      Serial.print(aSensorSamples[i].dAccX);
+      Serial.print(aSensorSamples[i].fAccX);
       Serial.print(";");
-      Serial.print(aSensorSamples[i].dAccY);
+      Serial.print(aSensorSamples[i].fAccY);
       Serial.print(";");
-      Serial.print(aSensorSamples[i].dAccZ);
+      Serial.print(aSensorSamples[i].fAccZ);
       Serial.print(";");
-      Serial.print(aSensorSamples[i].dAccV);
+      Serial.print(aSensorSamples[i].fAccV);
       Serial.print(";");
-      Serial.println(aSensorSamples[i].dAltHeight); // print semicolon and terminate with /n
+      Serial.println(aSensorSamples[i].fAltHeight); // print semicolon and terminate with /n
     };
     
     // Send stop character
@@ -212,4 +229,3 @@ void loop() {
     delay(1000);              // wait for a second to repeat sending data
   };
 }
-
