@@ -29,6 +29,7 @@
  13-3-2015  04        Changed the use of doubles to float,
                       Change the use of sqrt() to sqrtf(), use single precision for double precision
  13-3-2015  05        Added timer 1 interrupts at 200 ms interval to have exact timed measurements
+ 14-3-2015  06        Removed accelerometer axis form struct to save space for more data points
 
  Future features and optimizations:
  ==================================
@@ -50,8 +51,8 @@
 /* ---- defines ---- */
 #define DEBUG    // Comment to prevent debug messages on serial port
 
-#define SAMPLES  50  // Number of samples taken by this sketch
-#define INTERVAL 200000 // Interval in us between individual measurements using timer 1
+#define SAMPLES  100  // Number of samples taken by this sketch
+#define INTERVAL 100000 // Interval in us between individual measurements using timer 1
 #define TRIGGER_TRESHOLD 2 // treshold in m/s^2 before measurement starts
 
 #define AXIS_X  0  // Index to x-axis value
@@ -63,9 +64,6 @@
 
 /* ---- Variables ---- */
 typedef struct sensorset_t {
-                            float fAccX;       // X-axis accelerometer sensor in m/s
-                            float fAccY;       // X-axis accelerometer sensor in m/s
-                            float fAccZ;       // X-axis accelerometer sensor in m/s
                             float fAccV;       // vector accelerometer sensor in m/s
                             float fAltHeight;  // current height in meters
                             } sensorset_t;
@@ -155,6 +153,7 @@ void loop() {
   sensorset_t     aSensorSamples[SAMPLES] = { 0 };  // Array of sensor sets to store colleged data
   int32_t         i32ActualPreassure = 0; // variable for storing actual preassure in pascal. Used for calibrating
   float           fAxisCal[3] = { 0 };  // Array of floats to store calibration values. Used for calibrating
+  float           fAxisMeas[3] = { 0 };  // Array of floats to store current values and calculate vector of.
   sensors_event_t event;   // Pointer to event-struct for storing accelerometer data
   int8_t          i = 0;  // counter variable
   bool            bRunning = false; // flag to set state of data collection process.
@@ -193,12 +192,12 @@ void loop() {
     
     // Accelerometer sensor
     accel.getEvent(&event); // collect data
-    aSensorSamples[i].fAccX = event.acceleration.x - fAxisCal[AXIS_X]; // store data in sensor array.
-    aSensorSamples[i].fAccY = event.acceleration.y - fAxisCal[AXIS_Y];
-    aSensorSamples[i].fAccZ = event.acceleration.z - fAxisCal[AXIS_Z];
-    aSensorSamples[i].fAccV = sqrtf(pow(aSensorSamples[i].fAccX, 2) + // calculate the length of the vector 
-                                    pow(aSensorSamples[i].fAccY, 2) +
-                                    pow(aSensorSamples[i].fAccZ, 2)
+    fAxisMeas[AXIS_X] = event.acceleration.x - fAxisCal[AXIS_X]; // store data in sensor array.
+    fAxisMeas[AXIS_Y] = event.acceleration.y - fAxisCal[AXIS_Y];
+    fAxisMeas[AXIS_Z] = event.acceleration.z - fAxisCal[AXIS_Z];
+    aSensorSamples[i].fAccV = sqrtf(pow(fAxisMeas[AXIS_X], 2) + // calculate the length of the vector 
+                                    pow(fAxisMeas[AXIS_Y], 2) +
+                                    pow(fAxisMeas[AXIS_Z], 2)
                                    );
     // Height meter
     aSensorSamples[i].fAltHeight = bmp.readAltitude((float)i32ActualPreassure);
@@ -222,8 +221,6 @@ void loop() {
   Serial.println(" OK:Datacollection");
 #endif
 
-  noInterrupts(); // Stop timer 1 sending interrupts
-  
   // send collected data serial  
   while(1) {
     digitalWrite(13, HIGH);   // turn the LED on (HIGH is the voltage level)
@@ -232,18 +229,12 @@ void loop() {
     // Send start character
     Serial.println("S"); 
     // Send header of the table with sensor data including starting 'H' identifeier that Header is following
-    Serial.println("H;Sample;X (m/s^2);Y (m/s^2);Z (m/s^2); Vector (m/s^2); Height (m)");
+    Serial.println("H;t(ms);Vector(m/s^2); Height(m)");
 
     // Send sensordata in table form semicolon separated.  
     for ( i = 0; i < SAMPLES; i++) {
       Serial.print("D;");  // Line identifier that data is following
-      Serial.print(i);
-      Serial.print(";");
-      Serial.print(aSensorSamples[i].fAccX);
-      Serial.print(";");
-      Serial.print(aSensorSamples[i].fAccY);
-      Serial.print(";");
-      Serial.print(aSensorSamples[i].fAccZ);
+      Serial.print((i*INTERVAL)/1000);
       Serial.print(";");
       Serial.print(aSensorSamples[i].fAccV);
       Serial.print(";");
