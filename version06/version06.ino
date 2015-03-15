@@ -56,7 +56,7 @@
 
 #define SAMPLES  100  // Number of samples taken by this sketch
 #define INTERVAL 100000 // Interval in us between individual measurements using timer 1
-#define TRIGGER_TRESHOLD 2 // treshold in m/s^2 before measurement starts
+#define TRIGGER_TRESHOLD 20 // treshold in m/s^2 before measurement starts
 
 #define AXIS_X  0  // Index to x-axis value
 #define AXIS_Y  1  // Index to y-axis value
